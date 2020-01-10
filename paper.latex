@@ -1,0 +1,213 @@
+\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames*,x11names*}{xcolor}
+%
+\documentclass[a4paperpaper,twocolumn]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provides euro and other symbols
+\else % if luatex or xelatex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage[]{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+            pdftitle={Turing Mesh Shaders},
+            pdfauthor={Viktor Zoutman (viktor@vzout.com)},
+            colorlinks=true,
+            linkcolor=blue,
+            citecolor=Blue,
+            urlcolor=Blue,
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage[a4paper]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.00,1.00}{#1}}
+\newcommand{\DataTypeTok}[1]{#1}
+\newcommand{\DecValTok}[1]{#1}
+\newcommand{\BaseNTok}[1]{#1}
+\newcommand{\FloatTok}[1]{#1}
+\newcommand{\ConstantTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.00,0.50,0.50}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.50,0.50}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.00,0.50,0.50}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.00,0.50,0.50}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.00,0.50,0.50}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{1.00,0.25,0.00}{#1}}
+\newcommand{\FunctionTok}[1]{#1}
+\newcommand{\VariableTok}[1]{#1}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.00,1.00}{#1}}
+\newcommand{\OperatorTok}[1]{#1}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{1.00,0.25,0.00}{#1}}
+\newcommand{\AttributeTok}[1]{#1}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{5}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+\makeatletter
+\@ifpackageloaded{caption}{\captionsetup{labelformat=empty}}{\usepackage[labelformat=empty]{caption}}
+\newenvironment{pandoccrossrefsubcaption}{\renewcommand{\toprule}{}\renewcommand{\bottomrule}{}}{}
+\makeatother
+
+\title{Turing Mesh Shaders}
+\author{Viktor Zoutman (viktor@vzout.com)}
+\date{10 December 2019}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+In 2018 NVIDIA Released their GPU architecture, called
+Turing\textsuperscript{\protect\hyperlink{ref-nvidia:ta}{1}}. Its main
+feature is
+ray-tracing\textsuperscript{\protect\hyperlink{ref-nvidia:rtx}{2}} but
+Turing also introduces several other
+developments\textsuperscript{\protect\hyperlink{ref-nvidia:ta-id}{3}}
+that look very intereresting on their own. One of these developements is
+the concept of \emph{mesh shaders}. But what are mesh shaders and how
+can we improve use them to improve your renderear?
+\end{abstract}
+
+\hypertarget{introduction}{%
+\section{Introduction}\label{introduction}}
+
+Over time the graphics pipeline has gotten more and more complicated.
+While some parts of the currect graphics pipeline are flexible (geometry
+shaders, tesselation) they are not performant and where the graphics
+pipeline is performant it is often not flexible (instancing).
+
+Mesh shaders aim to simplyify this pipeline by removing the input
+assambler, replacing the tesslator with a mesh generator, replacing the
+vertex shader and tesselation control shader with a \emph{task shader}.
+and the tesselation evaluation shader and geometry shader with a mesh
+shader. This simplification has the effect of introducing higher
+scalability and bandwidth-reduction. (TODO: explain why)
+
+The mesh and task shaders are basically compute shaders. This gives
+developers the freedom to use threads for different purposes and share
+data among them using \emph{wave
+intrinsics}\textsuperscript{\protect\hyperlink{ref-dx:wi}{4}}/\emph{subgroups}\textsuperscript{\protect\hyperlink{ref-vk:subgroups}{5}}.
+
+\hypertarget{the-mesh-shader}{%
+\section{The Mesh Shader}\label{the-mesh-shader}}
+
+As aforementioned the mesh shader is similar to compute shaders. Like
+compute shaders, a mesh shader defines a work group of parallel-running
+threads (lanes) \textbf{???}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{layout}\NormalTok{(local_size_x=NUM_THREADS_X) }\DataTypeTok{in}\NormalTok{; }\CommentTok{// Only 1 dimensional}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{[}\FunctionTok{numthreads}\NormalTok{(NUM_THREADS_X, NUM_THREADS_Y, NUM_THREADS_Z)]}
+\end{Highlighting}
+\end{Shaded}
+
+\{\#eq:test\}
+
+\[
+\begin{Shaded}
+\begin{Highlighting}[glsl]
+layout(local_size_x=NUM_THREADS_X) in; // Only 1 dimensional
+\end{Highlighting}
+\end{Shaded}
+\]
+
+\hypertarget{the-task-shader}{%
+\section{The Task Shader}\label{the-task-shader}}
+
+\hypertarget{instancing}{%
+\section{Instancing}\label{instancing}}
+
+\hypertarget{culling}{%
+\section{Culling}\label{culling}}
+
+\hypertarget{tesselation}{%
+\section{Tesselation}\label{tesselation}}
+
+\hypertarget{references}{%
+\section*{References}\label{references}}
+\addcontentsline{toc}{section}{References}
+
+\hypertarget{refs}{}
+\leavevmode\hypertarget{ref-nvidia:ta}{}%
+1. NVIDIA Corporation. Turing architecture.
+\textbf{\url{https://www.nvidia.com/en-us/design-visualization/technologies/turing-architecture/}},
+(2018).
+
+\leavevmode\hypertarget{ref-nvidia:rtx}{}%
+2. NVIDIA Corporation. Raytracing.
+\textbf{\url{https://developer.nvidia.com/rtx/raytracing}}, (2018).
+
+\leavevmode\hypertarget{ref-nvidia:ta-id}{}%
+3. NVIDIA Corporation. Turing architecture in-depth.
+\textbf{\url{https://devblogs.nvidia.com/nvidia-turing-architecture-in-depth/}},
+(2018).
+
+\leavevmode\hypertarget{ref-dx:wi}{}%
+4. Microsoft Corporation. Wave intrinsics.
+\textbf{\url{https://github.com/Microsoft/DirectXShaderCompiler/wiki/Wave-Intrinsics}},
+(2018).
+
+\leavevmode\hypertarget{ref-vk:subgroups}{}%
+5. Daniel Koch, NVIDIA. Vulkan subgroup explained.
+\textbf{\url{https://www.khronos.org/assets/uploads/developers/library/2018-vulkan-devday/06-subgroups.pdf}},
+(2018).
+
+\end{document}

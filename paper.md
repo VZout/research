@@ -6,14 +6,17 @@ author: Viktor Zoutman (viktor@vzout.com)
 link-citations: true
 titlegraphic: images/pipeline.jpg
 citation-style: nature.csl
-output:
-  pdf_document:
-    includes:
-      in_header: header.tex
-abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia:ta]. Its main feature is ray-tracing [@nvidia:rtx] but Turing also introduces several other developments [@nvidia:ta-id] that look very intereresting on their own. One of these developements is the concept of *mesh shaders*. But what are mesh shaders and how can we improve use them to improve your renderear?
+abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia:ta]. Its main feature is ray-tracing [@nvidia:rtx] but Turing also introduces several other developmenhttps://www.wikihow.com/Write-an-Abstractts [@nvidia:ta-id] that look very intereresting on their own. One of these developements is the concept of *mesh shaders*. But what are mesh shaders and how can we improve use them to improve your renderear?
 ---
 
+\newcommand\note[1]{\textcolor{red}{\textbf{NOTE: \emph{#1}}}}
 \renewenvironment{Shaded} {\begin{snugshade}\footnotesize} {\end{snugshade}}
+
+\note{Rewrite the abstract when the paper is finished.}
+
+\note{Figure out how to change 'lst [N]' into 'listing [N]'.}
+
+\note{Reference api functions/intrinsics I mention within the text like `SetMeshOutputCounts`}
 
 # Introduction
 
@@ -21,11 +24,15 @@ Over time the graphics pipeline has gotten more and more complicated. While some
 
 ![](images/pipeline.jpg)
 
-Mesh shaders aim to simplyify the graphics pipeline by removing the input assambler, replacing the tesslator with a mesh generator, replacing the vertex shader and tesselation control shader with a (optional) *task shader* (Called *amplification shader* in DirectX 12). and the tesselation evaluation shader and geometry shader with a mesh shader. This simplification has the effect of introducing higher scalability and bandwidth-reduction.
+Mesh shaders aim to simplyify the graphics pipeline by removing the input assembler, replacing the tesslator with a mesh generator, replacing the vertex shader and tesselation control shader with a (optional) *task shader* (Called *amplification shader* in DirectX 12). and the tesselation evaluation shader and geometry shader with a mesh shader. This simplification has the effect of introducing higher scalability and bandwidth-reduction.
 
-> TODO: Explain why mesh shading is more scalable and can reduces bandwidth.
+\note{Explain why mesh shading is more scalable and can reduces bandwidth.}
 
 The mesh and task shaders are basically compute shaders. This gives developers the freedom to use threads for different purposes and share data among them using *wave intrinsics*[@dx:wi]/*subgroups*[@vk:subgroups].
+
+\note{Write about subgroups and wave intrinsics in a background information or when discussing optimization of mesh shaders.}
+
+
 
 ## The Mesh Shader
 
@@ -54,9 +61,9 @@ layout(
 ) out;
 ```
 
-Some where in your mesh shader you need to set the meshlet primtive count. In Vulkan you use the build-in variable `gl_PrimitiveCountNV` and in DirectX 12 you can call `SetMeshOutputCounts(numVertices, numPrimitives)`. As you can see in the function definition the DirectX12 function allows you to set the number of vertices dynamically unlike Vulkan which uses the static `layout[]` as seen in @lst:layoutmax.
+Somewhere in your mesh shader you need to set the meshlet primtive count. In Vulkan you use the built-in variable `gl_PrimitiveCountNV` and in DirectX 12 you can call `SetMeshOutputCounts(numVertices, numPrimitives)`. As you can see in the function definition the DirectX12 function allows you to set the number of vertices dynamically unlike Vulkan which uses the static `layout[]` as seen in @lst:layoutmax.
 
-Outputting the indices in Vulkan is done with the build-in variable `gl_PrimitiveIndicesNV[]` or the function `writePackedPrimitiveIndices4x8NV` which writes 4 indicies from a 32 bit value. In DirectX12 you specifiy in the shader entry parameters a out parameter called `indices`. See @lst:writeindices
+Outputting the indices in Vulkan is done with the built-in variable `gl_PrimitiveIndicesNV[]` or the function `writePackedPrimitiveIndices4x8NV` which writes 4 indicies from a 32 bit value. In DirectX12 you specifiy in the shader entry parameters an out parameter called `indices`. See @lst:writeindices
 
 ```{#lst:writeindices .glsl caption="Outputting indices"}
 // Vulkan
@@ -141,6 +148,8 @@ void main(
 
 Both Vulkan and DirectX 12 allow you to either execute mesh shaders directly or using execute indirect. I'll skip over the indirect version for now. Vulkan has the `vkCmdDrawMeshTasksNV(VkCommandBuffer cmdBuffer, uint32_t taskCount, uint32_t firstTask);` function. `taskCount` is the number of mesh shaders to execute with the group size specified in the shader. The `firstTask` parameter allows you to make sure the order of task shaders and mesh shaders is correct. DirectX 12 has `DispatchMesh(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)`. As mentioned before the biggest difference is that DirectX12 allows 3 dimensional thread blocks.
 
+\note{Possibily explain the differences between direct and indirect execution.}
+
 You don't need to bind a vertex buffer the traditional way anymore. Instead you are required to create a descriptor to your buffers and use that to read from the buffer directly in the mesh shader. You could just bind the vertex buffer and index buffer directly without modifying the contents of it but this is not the most efficient approach. For these optimizations see @sec:gen_meshlets.
 
 # Generating Meshlets {#sec:gen_meshlets}
@@ -180,5 +189,11 @@ There are undoubtedly many more optimization and techniques yet to be discovered
 * Execute-Indirect and mesh shaders.
 * My current approach to displacement mapping is very basic. This could undoubtedly be improved drastically.
 
-# References
+# Change-log
 
+## 01 - 15 - 2020
+
+* Added notes
+* Fixed spellings errors
+
+# References

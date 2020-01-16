@@ -10,7 +10,6 @@ abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia
 ---
 
 \newcommand\note[1]{\textcolor{red}{\textbf{NOTE: \emph{#1}}}}
-\renewenvironment{Shaded} {\begin{snugshade}\footnotesize} {\end{snugshade}}
 
 \note{Rewrite the abstract when the paper is finished.}
 
@@ -28,137 +27,56 @@ Mesh shaders aim to simplyify the graphics pipeline by removing the input assemb
 
 \note{Explain why mesh shading is more scalable and can reduces bandwidth.}
 
-The mesh and task shaders are basically compute shaders. This gives developers the freedom to use threads for different purposes and share data among them using *wave intrinsics*[@dx:wi]/*subgroups*[@vk:subgroups].
+This allows graphics programmers to satisfty the need for the high poly count and high number of objects in modern video games and graphics software like CAD.
 
 \note{Write about subgroups and wave intrinsics in a background information or when discussing optimization of mesh shaders.}
 
+## The Mesh Shader {#sec:themeshshader}
 
+The mesh shader (and task shader) are basically compute shaders. A mesh shader begins its work by dispatching a set of threadgroups, each of which process a subset of the larger mesh. Similar to compute each thread has access to groupshared memory. The output vertices and primitives however do not have to corrolate to a specific thread in the group. As long as all vertices and primitives used in the threadgroup are processed, resources can be allocated in whatever way is most efficient. The user is also capable of specifying per-vertex and per-primitive attributes, which allows for faster and space efficient rendering.
 
-## The Mesh Shader
+There are currently 2 implementattions of mesh shaders. One in the DirectX 12 API and one as a Vulkan Extension. There are a couple of differences between these. Vulkan allows only 1 dimensional work groups. DirectX however allows for 3 dimensional work groups. DirectX also has the ability to dynamically specify the number of output vertices dynamically unlike Vulkan which only allows you to specify that value statically.
 
-As aforementioned the mesh shader is similar to compute shaders. Like compute shaders, a mesh shader defines a work group of parallel-running threads (lanes). In DirectX 12 you can define it as a 3 dimensional block which cannot exceed $X \times Y \times Z = 128$. In Vulkan however you are limited to the x component with a maximum value of $32$. See @lst:threads. You will also need to define the output topology for the mesh shader. The only option you have at the time of writing this paper is for Vulkan `triangles` and for DirectX12 `triangles` and `line`. See @lst:outprim.
+The aforementioned submeshes processed by thread groups are called *meshlets*. The idea is that the programmer algorithmicly splits the mesh in x amount of meshlets with a vertex count of 32 to around 200 vertices, depending on the number of attributes. It is most efficient to generate meshlets with as many as possible vertices that allow vertex re-use. These meshlets should be pre-computed. This is a big benefit over the old Input Assambler which has to identify vertex re-use dynamically. In [@sec:genmeshlets] I'll go over how to efficiently pre-compute meshlets.
 
-```{#lst:threads .glsl caption="Defining the work group size"}
-// Vulkan
-layout(local_size_x=32) in;
-// DirectX 12
-[numthreads(32, 32, 32)]
-```
+## The Task Shader {#sec:thetaskshader}
 
-```{#lst:outprim .glsl caption="Defining the output topology"}
-// Vulkan
-layout(triangles) out;
-// DirectX 12
-[outputtopology("triangle")]
-```
+An optional expansion in the mesh shader pipeline is the *task shader* (*amplification shader*). While the mesh shader is a flexible tool it does not allow for tessellation or efficient culling of entire meshlets.
 
-Unlike DirectX12, Vulkan requires you to define the maximum amount of vertices and primitives (both cannot exceed 256) per meshlet. These settings can affect performance drastically even if you do not reach the max specified by the user. See @lst:layoutmax.
+The most basic use of a task shader is basically executing mesh shaders. We can determine for example whether a meshlet is visible and conditionally execute the mesh shader that is supposed to process the meshlet. Task shaders are capable of sharing data with its child mesh shaders and also the childs have access to the parents group shared memory. This allows you to add more triangles to the meshlet for displacement mapping for example since you can now exceed the limited vertex count per mesh shader by executing 2 mesh shaders instead.
 
-```{#lst:layoutmax .glsl caption="Specifiying the maximum number of vertices and primitives"}
-layout(
-	max_vertices=VERTEX_COUNT,
-	max_primitives=PRIMITIVE_COUNT
-) out;
-```
+## Executing Mesh & Task Shaders {#sec:execmeshshader}
 
-Somewhere in your mesh shader you need to set the meshlet primtive count. In Vulkan you use the built-in variable `gl_PrimitiveCountNV` and in DirectX 12 you can call `SetMeshOutputCounts(numVertices, numPrimitives)`. As you can see in the function definition the DirectX12 function allows you to set the number of vertices dynamically unlike Vulkan which uses the static `layout[]` as seen in @lst:layoutmax.
+Both Vulkan and DirectX 12 allow you to either execute mesh shaders directly or using execute indirect. Vulkan has the function `CmdDrawMeshTasksNV` with the parameters `uint32_t taskCount` and `uint32_t firstTask`. firstTask allows you to specify what mesh shader to execute first. Lets say you have a task shader and a mesh shader but they are placed in the pipeline in the order of mesh shader, task shader but you still want to execute the task shader first. In this case you can set `firstTask` to 1 and it will execute the task shader first followed my the mesh shader. The other parameter - `taskCount` - is a bit misleading. It is actually the amount of work groups in the `x` dimension you want to execute on the first task shader.
 
-Outputting the indices in Vulkan is done with the built-in variable `gl_PrimitiveIndicesNV[]` or the function `writePackedPrimitiveIndices4x8NV` which writes 4 indicies from a 32 bit value. In DirectX12 you specifiy in the shader entry parameters an out parameter called `indices`. See @lst:writeindices
+DirectX 12 is a bit more straight forward with its `DispatchMesh` function. It has the parameters `ThreadGroupCountX`, `ThreadGroupCountY` and `ThreadGroupCountZ` parameters. Each thread group size must be less than 64k and the product of $ThreadGroupCountX \times ThreadGroupCountY \times ThreadGroupCountZ$ must not exeed $2^{22}$
 
-```{#lst:writeindices .glsl caption="Outputting indices"}
-// Vulkan
-void main()
-{
-	gl_PrimitiveIndicesNV[i] = index;
-
-	gl_PrimitiveCountNV = prim_max;
-}
-
-// DirectX 12
-void main(
-    // ..
-	out indices uint3 triangles[128])
-{
-	triangles = uint3(i0, i1, i2);
-	
-	SetMeshOutputCounts(
-		num_vertices,
-		num_primitives);
-}
-```
-
-For the vertex positions Vulkan exposes the `gl_MeshPerVertexNV` object whith a couple of variables on of which is `gl_Position`. DirectX 12 has  a shader entry parameter for this just like the indices but with the `SV_Position` intrinsic instead.
-
-```{#lst:writevertices .glsl caption="Outputting vertex positions"}
-// Vulkan
-void main()
-{
-	gl_PrimitiveIndicesNV[i] = index;
-	gl_MeshVerticesNV[i].gl_Position 
-		= float4(x, y, z, w);
-
-	gl_PrimitiveCountNV = prim_max;
-}
-
-// DirectX 12
-void main(
-    // ..
-	out vertices float4 : SV_Position verts[256],
-	out indices uint3 triangles[128])
-{
-	triangles[i] = uint3(i0, i1, i2);
-	verts[i] = float4(x, y, z, w);
-	
-	SetMeshOutputCounts(
-		num_vertices,
-		num_primitives);
-}
-```
-
-Passing other attributes to the fragment/pixel shader can be done in Vulkan and DirectX12 the same way as done in vertex shaders. for Vulkan this is the `layout(location = 0) out` system and for DirectX12 is changing the output vertices type to a struct with the correct semantic for the position and the `ATTRIBUTE` semantic for the other attributes. See @lst:vertattribs.
-
-```{#lst:vertattribs .glsl caption="Outputting extra attributes"}
-// Vulkan
-layout(location = 0) out vec2 uv[];
-
-void main()
-{
-	uv[i] = vec2(u, v);
-}
-
-// DirectX 12
-struct Vertex
-{
-	float4 pos : SV_Position;
-	float2 uv : ATTRIBUTE;
-};
-
-void main(
-    // ..
-	out vertices Vertex verts[256])
-{
-	verts[i].pos = float4(x, y, z, w);
-	verts[i].uv = float2(u, v);
-}
-```
-
-## The Task Shader
-
-## Executing Mesh Shaders
-
-Both Vulkan and DirectX 12 allow you to either execute mesh shaders directly or using execute indirect. I'll skip over the indirect version for now. Vulkan has the `vkCmdDrawMeshTasksNV(VkCommandBuffer cmdBuffer, uint32_t taskCount, uint32_t firstTask);` function. `taskCount` is the number of mesh shaders to execute with the group size specified in the shader. The `firstTask` parameter allows you to make sure the order of task shaders and mesh shaders is correct. DirectX 12 has `DispatchMesh(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)`. As mentioned before the biggest difference is that DirectX12 allows 3 dimensional thread blocks.
+In Vulkan to calculate the `numTasks` parameter I use the following formula: $numTasks = (N + S - 1) / S$ where $N$ is the number of meshlets multiplied by the number of instances and $S$ is the size of the work group. DirectX is a bit more complicated since you could optimize the mesh shader in different ways using the 2 extra dimensions. For example every instance of a meshlet can be a index in the `y` dimension.
 
 \note{Possibily explain the differences between direct and indirect execution.}
 
-You don't need to bind a vertex buffer the traditional way anymore. Instead you are required to create a descriptor to your buffers and use that to read from the buffer directly in the mesh shader. You could just bind the vertex buffer and index buffer directly without modifying the contents of it but this is not the most efficient approach. For these optimizations see @sec:gen_meshlets.
+You don't need to bind a vertex buffer the traditional way anymore. Instead you are required to create a descriptor to your buffers and use that to read from the buffer directly in the mesh shader. You could just bind the vertex buffer and index buffer directly without modifying the contents of it but this is not the most efficient approach. For these optimizations see @sec:genmeshlets.
 
-# Generating Meshlets {#sec:gen_meshlets}
+# Generating Meshlets {#sec:genmeshlets}
+
+First of all we want to have vertices and indices we can process in the mesh shader. Remember we want to optimize the re-use of vertices so every meshlet should have the highest number of re-use possible. We can build the vertex buffer as followed:
+
+1. Take the first triangle that hasn't already been added to a meshlet.
+1. Loop over all triangles left in the mesh.
+	* Find as many duplicate vertices as possible and add their parent triangle to the meshlet (without exeeding the maximum amount of vertices).
+	* If there are no duplicates left add any triangle that hasn't been added to a meshlet until the maximum amount of vertices is reached.
+
+Keep in mind that theoratically it is possible to have a vertex re-used more often than the maximum vertex count of a meshlet. Also note that you can't share a single triangle over 2 meshlets.
+
+While you assigning vertices to meshlets you can also create the index buffer of the meshlets. We can store the indices like normal and index from the start to the end of the vertex buffer. Or you can flatten the index buffer and in the mesh shader append a "vertex start" variable to the index. This allows us to have a 32 bit index buffer where we store 4 indices in 1 value and write with one operation 4 indices to the output of the mesh shader (`writePackedPrimitiveIndices4x8NV`).
 
 # Rendering Meshlets
 
 > In this section I'll focus on Vulkan and mostly ignore DirectX12. Vulkan's version of wave intrinsics is called *subgroups*. You can read more about them here @vk:subgroups and see how they compare to DirectX12's wave intrinsics @dx:wi.
 
 So first things first. We need to decide on the work group size. I found that using all the threads available in the warp (wavefront) was most efficient (32 in the case of my RTX 2060).
+
+# Spreading Work Across Lanes
 
 # Instancing
 
@@ -195,5 +113,9 @@ There are undoubtedly many more optimization and techniques yet to be discovered
 
 * Added notes
 * Fixed spellings errors
+* Rewrote [@sec:themeshshader]
+* Rewrote [@sec:execmeshshader]
+* Wrote [@sec:thetaskshader]
+* Wrote [@sec:genmeshlets]
 
 # References

@@ -76,6 +76,17 @@ While you assigning vertices to meshlets you can also create the index buffer of
 
 So first things first. We need to decide on the work group size. I found that using all the threads available in the warp (wavefront) was most efficient (32 in the case of my RTX 2060).
 
+To generate our primitives in the mesh shader we require some data. For now we only need the number of vertices in the meshlet, the number of primitives in the meshlet, the offset of the meshlet in the vertex buffer and the offset of the meshlet in the index buffer. In my testing I store the counts in 8 bits and the offsets in 20 bits. This data is our meshlet descriptor. We want to access these descriptors on the GPU so we need to store them in a buffer. On the GPU we can index into the buffer using the following formula: $i = base\_id + lane\_id$ where $base\_id = work\_group\_id_{1} \times work\_group\_id_{2} \times work\_group\_id_{3}$ and $lane\_id = local\_invocation\_id_{1} \times local\_invocation\_id_{2} \times local\_invocation\_id_{3}$ 
+
+In the mesh shader you would want to have two loops. One parsing the indices and one parsing the vertices. You could do this in the same loop. But since we likely have duplicate vertices we don't want to parse vertices twice or introduce branching. We want to split the work over the work group. We can calculate the number of itterations for the loops respectively with the following two formulas: $prim\_count / group\_size$ and $vert\_count / group\_size$. To allow the shader compile to compute this during compilation we can use the maximum primitive and vertex count instead of the actual numbers. This has the additional benefit of reduced branching.
+
+Parsing the vertices should be relatively straight forward. Output the vertex position (multipled by the MVP if required) and output the other attributes of the vertex (normals, tangents, etc).
+
+Parsing indices is even simpiler but instead of just outputting the indices directly we can optimize it by writing 4 or 8 indices in the same loop iteration. If you want to make use of this optimization the formula used to calculate the number of loop iterations becomes $todo$. You can write 4 indices at the same time by using `writePackedPrimitiveIndices4x8NV` in GLSL. HLSL however does not have such function.
+
+\note{The optimized indices formula}
+\note{difference between 4 vs 8 indices per iteration}
+
 # Spreading Work Across Lanes
 
 # Instancing

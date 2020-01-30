@@ -12,3 +12,6 @@ clean:
 	rm paper.pdf
 
 .PHONY: all clean paper
+
+
+# --bibliography=paper.bib --highlight-style tango --variable classoption=twocolumn --variable papersize=a4paper -s paper.md -o paper.pdf -H header.tex

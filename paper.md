@@ -2,6 +2,7 @@
 title: Turing Mesh Shaders
 subject: Graphics Programming
 category: Science
+date: 30 January 2020
 author: Viktor Zoutman (viktor@vzout.com)
 link-citations: true
 titlegraphic: images/pipeline.jpg
@@ -10,6 +11,7 @@ abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia
 ---
 
 \newcommand\note[1]{\textcolor{red}{\textbf{NOTE: \emph{#1}}}}
+`\renewenvironment{Shaded} {\begin{snugshade}\footnotesize} {\end{snugshade}}`
 
 \note{Rewrite the abstract when the paper is finished.}
 
@@ -82,14 +84,27 @@ In the mesh shader you would want to have two loops. One parsing the indices and
 
 Parsing the vertices should be relatively straight forward. Output the vertex position (multipled by the MVP if required) and output the other attributes of the vertex (normals, tangents, etc).
 
-Parsing indices is even simpiler but instead of just outputting the indices directly we can optimize it by writing 4 or 8 indices in the same loop iteration. If you want to make use of this optimization the formula used to calculate the number of loop iterations becomes $todo$. You can write 4 indices at the same time by using `writePackedPrimitiveIndices4x8NV` in GLSL. HLSL however does not have such function.
+Parsing indices is even simpiler but instead of just outputting the indices directly we can optimize it by writing 4 or 8 indices in the same loop iteration. If you want to make use of this optimization the formula used to calculate the number of loop iterations becomes $prim\_count / group\_size \times indices\_per\_iteration$. You can write 4 indices at the same time by using `writePackedPrimitiveIndices4x8NV` in GLSL. HLSL however does not have such function.
 
-\note{The optimized indices formula}
 \note{difference between 4 vs 8 indices per iteration}
 
-# Spreading Work Across Lanes
+When parsing meshlets it is important to understand that it doesn't matter what vertices and indices you are parsing per thread. If you parse $x$ index you don't require its corresponding vertex in the same thread. This allows us to parse vertices and indices in any order.
+
+In the vertex and index parsing loops which iterate `i` from 0 to `num iterations` (see blahblah) we can calculate the index using the following formula: $local\_invocation\_id\_{1} + i * group\_size$. Meaning we loop over a subset of indices and vertices per lane so we don't parse indices or vertices multiple times within the same thread group.
 
 # Instancing
+
+Instancing is a bit more difficult compared to the old vertex pipeline. I have 2 solutions for this problem. One is uses Execute Indirect for instancing while the other does the instancing with task shaders. Both techniques still require you to bind a big buffer with all the per-instance data just like the old days.
+
+## Instancing Using Execute Indirect
+
+This is a rather simple approach. The mesh shader API provides us with `blahblah` and works similar to normal indirect execution. And instead of calculating the instance id ourselves we can use the `ARB_shader_draw_parameters` extension which provides us with `gl_DrawIDARB` which we can functionally use as the instance id.
+
+## Instancing Using Only Mesh
+
+We need to calculate `gl_InstanceID ` ourselves and instead of increasing the `num instances` parameter of the old draw command we need to multiple the number of meshlets per mesh by the number of instances.
+
+First off lets compute the instance id. For this we need to know the number meshlets of the mesh which we need for the following formula: $inst\_id = (base\_id + lane\_id) / num\_meshlets$. We will need to adjust the meshlet id calculation as well: $meshlet\_id = base\_id + lane\_id \pmod{num\_meshlets}$
 
 ## Benchmarks
 
@@ -97,7 +112,7 @@ Parsing indices is even simpiler but instead of just outputting the indices dire
 
 ## Benchmarks
 
-# Tesselation
+# Tessellation
 
 ## Benchmarks
 
@@ -117,16 +132,5 @@ There are undoubtedly many more optimization and techniques yet to be discovered
 * Procedual geometry.
 * Execute-Indirect and mesh shaders.
 * My current approach to displacement mapping is very basic. This could undoubtedly be improved drastically.
-
-# Change-log
-
-## 01 - 15 - 2020
-
-* Added notes
-* Fixed spellings errors
-* Rewrote [@sec:themeshshader]
-* Rewrote [@sec:execmeshshader]
-* Wrote [@sec:thetaskshader]
-* Wrote [@sec:genmeshlets]
 
 # References

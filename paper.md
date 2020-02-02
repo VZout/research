@@ -231,11 +231,11 @@ Mesh shaders and the raytracing API's acceleration structures don't easily commu
 **Scene:** *1.8m triangles and 905.9k vertices in-view.*
 **Hardware:** *RTX 2080 TI*
 
-Performance for mesh shading is lacking due to inefficient read and writes of the vertex and index buffers.
+\newpage
 
 # Concolusion
 
-Mesh shading is not a magic bullet that will automatically make your rendering faster. It takes a lot of time to implement and optimize. And if you end up without any culling or instancing you will see a trivial performance difference. Mesh shading becomes really interesting when you implement culling and or optimize your shaders for specific scenarios. No matter what your implementation looks like you will always see a increase in memory usage due to the need to pre-compute meshlets and their descriptors. This technology is still in its infancy and moving forward we will lively see new techniques and applications for mesh shading.
+Mesh shading is not a magic bullet that will automatically make your rendering faster. It takes a lot of time to implement and optimize. And if you end up without any culling or instancing you will see a trivial performance difference. Mesh shading becomes really interesting when you implement meshlet culling and triangle culling (especially meshlet frustum culling has a great impact in performance) and or optimize your shaders for specific scenarios. No matter what your implementation looks like you will always see a increase in memory usage due to the need to pre-compute meshlets and their descriptors. This technology is still in its infancy and moving forward we will lively see new techniques and applications for mesh shading.
 
 # Further Work
 

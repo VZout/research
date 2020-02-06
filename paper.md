@@ -7,7 +7,7 @@ author: Viktor Zoutman (viktor@vzout.com)
 link-citations: true
 titlegraphic: images/pipeline.jpg
 citation-style: nature.csl
-abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia:ta]. Its main feature is ray-tracing [@nvidia:rtx] but Turing also introduces several other developmens that look very intereresting on their own. One of these developements is the concept of *mesh shaders*. But what are mesh shaders and how can we improve use them to improve your renderer?
+abstract: In 2018 NVIDIA Released their GPU architecture, called Turing [@nvidia:ta]. Its main feature is ray-tracing [@nvidia:rtx] but Turing also introduces several other developmens that look very intereresting on their own. One of these developements is the concept of *mesh shaders*. But what are mesh shaders and how can we improve use them to improve your renderer? I will also be investigating which different optimization techniques within mesh shading have the biggest impact on performance.
 header-includes: |
     \usepackage{supertabular,booktabs}
 secPrefix:
@@ -25,7 +25,7 @@ figPrefix:
 
 Over time the graphics pipeline has gotten more and more complicated. While some parts of the current graphics pipeline are flexible (geometry shaders, tessellation), they are not performant and where the graphics pipeline is performant it is often not flexible (instancing).
 
-![Standard vs Mesh Shading Pipeline](images/pipeline.jpg){#fig:pipeline}
+![Standard vs Mesh Shading Pipeline[@wiki:intromeshshadinag]](images/pipeline.jpg){#fig:pipeline}
 
 Mesh shaders aim to simplify the graphics pipeline by removing the input assembler, replacing the tesselator with a mesh generator, substituting the vertex shader and tessellation control shader with a (optional) *task shader* (Called *amplification shader* in DirectX 12) and the tessellation evaluation shader and geometry shader with a mesh shader. This simplification has the effect of introducing opportunity for higher scalability and bandwidth-reduction.
 
@@ -223,19 +223,24 @@ Mesh shaders and the raytracing API's acceleration structures don't easily commu
 
 ## Performance
 
+![Scene A - *1 Object(s), 1.8m Triangles, 905.9k Vertices*](images/scene_a.png){#fig:scenea height=15%}
+
+![Scene B - *2,100 Object(s), 7.4m Triangles, 3.2m Vertices*](images/scene_b.png){#fig:scenea height=15%}
+
 \tablefirsthead{\toprule Standard Pipeline&Mesh Shading Pipeline \\ \midrule }
 \begin{supertabular}{rr}
     0.26 & 0.36
 \tablelasttail{ \\ \bottomrule }
 \end{supertabular}
-**Scene:** *1.8m triangles and 905.9k vertices in-view.*
 **Hardware:** *RTX 2080 TI*
+
+\note{Benchmarks will be done later. Currently I don't have access to the hardware.}
 
 \newpage
 
-# Concolusion
+# Conclusion
 
-Mesh shading is not a magic bullet that will automatically make your rendering faster. It takes a lot of time to implement and optimize. And if you end up without any culling or instancing you will see a trivial performance difference. Mesh shading becomes really interesting when you implement meshlet culling and triangle culling (especially meshlet frustum culling has a great impact in performance) and or optimize your shaders for specific scenarios. No matter what your implementation looks like you will always see a increase in memory usage due to the need to pre-compute meshlets and their descriptors. This technology is still in its infancy and moving forward we will lively see new techniques and applications for mesh shading.
+Mesh shading is not a magic bullet that will automatically make your rendering faster. It takes a lot of time to implement and optimize. And if you end up without any culling or instancing you will see a trivial performance difference. Mesh shading becomes really interesting when you implement meshlet culling and triangle culling (especially meshlet frustum culling has a great impact in performance) and or optimize your shaders for specific scenarios. Another area where mesh shading excels is high poly count meshes. Being able to blackface cull entire subsets of a mesh is very beneficial for performance. No matter what your implementation looks like you will always see a increase in memory usage due to the need to pre-compute meshlets and their descriptors. This technology is still in its infancy and moving forward we will lively see new techniques and applications for mesh shading.
 
 # Further Work
 
